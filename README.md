@@ -44,8 +44,8 @@ app = Flask(__name__)
 def formsg_webhook():
     decrypted = decrypt_flask_request(
         request,
-        secret_key='o4qGJ/AFpmToTOpqptMyTsV3WofQjD7dX6cpVZ7RwNA=',
-        webhook_uri='https://90da680eb8fa.ngrok.io/formsg_webhook',  # we use ngrok to test our webhooks locally
+        secret_key='xxx',
+        webhook_uri='https://xxx.ngrok.io/formsg_webhook',  # we use ngrok to test our webhooks locally
     )
 
     return jsonify(decrypted)

@@ -6,7 +6,7 @@ README = open(os.path.join(here, 'README.md')).read()
 
 setup(
     name='formsg',
-    version='0.1.1',
+    version='0.1.2',
     packages=['formsg'],
     description='A Python SDK for handling FormSG webhooks.',
     long_description=README,
