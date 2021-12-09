@@ -5,6 +5,10 @@ verify_ssl = true
 
 [dev-packages]
 twine = "*"
+mypy = "*"
+
+types-flask = "*"
+types-requests = "*"
 
 [packages]
 pynacl = "*"

@@ -3,6 +3,9 @@ import json
 import logging
 import re
 from time import time
+from typing import Any
+from typing import Dict
+from typing import Mapping
 from urllib.parse import urlparse
 
 from nacl.encoding import Base64Encoder
@@ -14,14 +17,20 @@ from nacl.signing import VerifyKey
 
 logger = logging.getLogger(__name__)
 
-FORMSG_WEBHOOK_PUBLIC_KEY = VerifyKey('3Tt8VduXsjjd4IrpdCd7BAkdZl/vUCstu9UvTX84FWw=', encoder=Base64Encoder)
-ENCRYPTED_CONTENT_REGEX = re.compile(r'^(?P<submission_public_key>[\w\+\/\=]*)\;(?P<nonce>[\w\+\/\=]*)\:(?P<encrypted_message>[\w\+\/\=]*)$')
+formsg_webhook_public_key = VerifyKey('3Tt8VduXsjjd4IrpdCd7BAkdZl/vUCstu9UvTX84FWw=', encoder=Base64Encoder)  # https://github.com/opengovsg/formsg-javascript-sdk#step-3---verify-the-signature
+encrypted_content_regex = re.compile(r'^(?P<submission_public_key>[\w\+\/\=]*)\;(?P<nonce>[\w\+\/\=]*)\:(?P<encrypted_message>[\w\+\/\=]*)$')
 
 
-def verify_signature(webhook_uri, signature_header, signature_expiry_seconds=60):
+def verify_signature(webhook_uri: str, signature_header: str, signature_expiry_seconds: float = 60) -> Mapping[str, Any]:
     # v1 is signature, s is submissionId, f is formId, t is submission epoch
     logger.debug(f'X-FormSG-Signature is <{signature_header}>.')
-    formsg_signature = dict(part.split('=', 1) for part in signature_header.split(','))
+
+    formsg_signature: Dict[str, Any] = {}
+    for part in signature_header.split(','):
+        k, v = part.split('=', 1)
+        formsg_signature[k] = v
+    #end for
+
     formsg_signature['t'] = int(formsg_signature['t'])
 
     # Javascript url.href adds a trailing `/` to root domain urls
@@ -31,7 +40,7 @@ def verify_signature(webhook_uri, signature_header, signature_expiry_seconds=60)
         u = u._replace(path='/')
     webhook_uri = u.geturl()
 
-    FORMSG_WEBHOOK_PUBLIC_KEY.verify(
+    formsg_webhook_public_key.verify(
         smessage=f'{webhook_uri}.{formsg_signature["s"]}.{formsg_signature["f"]}.{formsg_signature["t"]}'.encode('ascii'),
         signature=Base64Encoder.decode(formsg_signature['v1']),
     )
@@ -43,14 +52,19 @@ def verify_signature(webhook_uri, signature_header, signature_expiry_seconds=60)
 #end def
 
 
-def decrypt_content(body_json, secret_key):
+def decrypt_content(
+    body_json: Mapping[str, Any],
+    secret_key: str,  # Base64 encoded secret key
+) -> Mapping[str, Any]:
     if 'data' in body_json:
         encrypted_content = body_json['data']['encryptedContent']
     else:
         encrypted_content = body_json['encryptedContent']  # old version POST body
     #end if
 
-    submission_public_key, nonce, encrypted_message = ENCRYPTED_CONTENT_REGEX.match(encrypted_content).groups()
+    m = encrypted_content_regex.match(encrypted_content)
+    assert m, 'Encrypted content has bad format.'
+    submission_public_key, nonce, encrypted_message = m.groups()
 
     box = Box(
         PrivateKey(secret_key, encoder=Base64Encoder),
