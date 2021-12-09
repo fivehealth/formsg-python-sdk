@@ -79,7 +79,7 @@ def decrypt_attachment(
     body: Mapping[str, Any],
     field_id: str,
     secret_key: str,  # Base64 encoded secret key
-):
+) -> bytes:
     body = body.get('data', body)  # Some FormSG submissions are in a data field while others are not.
     url = body['attachmentDownloadUrls'][field_id]
     r = requests.get(url)
