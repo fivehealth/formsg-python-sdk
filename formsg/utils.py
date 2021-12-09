@@ -1,4 +1,4 @@
-__all__ = ['verify_signature', 'decrypt_content']
+__all__ = ['verify_signature', 'decrypt_content', 'decrypt_attachment']
 import json
 import logging
 import re
@@ -8,6 +8,7 @@ from typing import Dict
 from typing import Mapping
 from urllib.parse import urlparse
 
+import requests
 from nacl.encoding import Base64Encoder
 from nacl.exceptions import BadSignatureError
 from nacl.public import Box
@@ -53,14 +54,11 @@ def verify_signature(webhook_uri: str, signature_header: str, signature_expiry_s
 
 
 def decrypt_content(
-    body_json: Mapping[str, Any],
+    body: Mapping[str, Any],
     secret_key: str,  # Base64 encoded secret key
 ) -> Mapping[str, Any]:
-    if 'data' in body_json:
-        encrypted_content = body_json['data']['encryptedContent']
-    else:
-        encrypted_content = body_json['encryptedContent']  # old version POST body
-    #end if
+    body = body.get('data', body)  # Some FormSG submissions are in a data field while others are not.
+    encrypted_content = body['encryptedContent']
 
     m = encrypted_content_regex.match(encrypted_content)
     assert m, 'Encrypted content has bad format.'
@@ -74,4 +72,25 @@ def decrypt_content(
     plaintext = box.decrypt(encrypted_message, Base64Encoder.decode(nonce), encoder=Base64Encoder)
 
     return json.loads(plaintext)
+#end def
+
+
+def decrypt_attachment(
+    body: Mapping[str, Any],
+    field_id: str,
+    secret_key: str,  # Base64 encoded secret key
+):
+    body = body.get('data', body)  # Some FormSG submissions are in a data field while others are not.
+    url = body['attachmentDownloadUrls'][field_id]
+    r = requests.get(url)
+    r.raise_for_status()
+
+    attachment_body = r.json()
+    encrypted_file: Mapping[str, str] = attachment_body['encryptedFile']
+    box = Box(
+        PrivateKey(secret_key, encoder=Base64Encoder),
+        PublicKey(encrypted_file['submissionPublicKey'], encoder=Base64Encoder),
+    )
+
+    return box.decrypt(encrypted_file['binary'], Base64Encoder.decode(encrypted_file['nonce']), encoder=Base64Encoder)
 #end def
