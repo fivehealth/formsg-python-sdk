@@ -79,9 +79,14 @@ def decrypt_attachment(
     body: Mapping[str, Any],
     field_id: str,
     secret_key: str,  # Base64 encoded secret key
-) -> bytes:
+) -> Optional[bytes]:
     body = body.get('data', body)  # Some FormSG submissions are in a data field while others are not.
-    url = body['attachmentDownloadUrls'][field_id]
+
+    try:
+        url = body['attachmentDownloadUrls'][field_id]
+    except KeyError:  # DEVX-467: `field_id` did not include an attachment; its an optional field
+        return None
+
     r = requests.get(url)
     r.raise_for_status()
 
