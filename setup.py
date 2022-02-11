@@ -6,7 +6,7 @@ README = open(os.path.join(here, 'README.md')).read()
 
 setup(
     name='formsg',
-    version='0.1.5',
+    version='0.1.6',
     packages=['formsg'],
     description='A Python SDK for handling FormSG webhooks.',
     long_description=README,
@@ -17,6 +17,7 @@ setup(
     license='MIT License',
     install_requires=[
         'pynacl>=1.4.0',
+        'requests',
     ],
     python_requires='>=3',
     keywords='django cache',

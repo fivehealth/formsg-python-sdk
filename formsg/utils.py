@@ -6,6 +6,7 @@ from time import time
 from typing import Any
 from typing import Dict
 from typing import Mapping
+from typing import Optional
 from urllib.parse import urlparse
 
 import requests
